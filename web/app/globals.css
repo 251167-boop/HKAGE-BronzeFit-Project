@@ -1,0 +1,102 @@
+:root {
+  --bg: #f7fff7;
+  --card: #ffffff;
+  --lime: #b7ff00;
+  --lime-hover: #a2e600;
+  --text: #1f2937;
+  --muted: #5f6b60;
+  --ok: #1e8e3e;
+  --warn: #d97706;
+  --bad: #c62828;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, Arial, Helvetica, sans-serif;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid #e6efe6;
+  border-radius: 18px;
+  padding: 28px;
+}
+
+.title {
+  font-size: 44px;
+  margin: 0 0 12px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 22px;
+  margin: 0 0 24px;
+}
+
+.btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 22px;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--lime);
+  color: #111827;
+}
+
+.btn-primary:hover {
+  background: var(--lime-hover);
+}
+
+.btn-outline {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid #cfd8cf;
+}
+
+.row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.col {
+  flex: 1 1 380px;
+}
+
+.status-ok {
+  color: var(--ok);
+}
+
+.status-warn {
+  color: var(--warn);
+}
+
+.status-bad {
+  color: var(--bad);
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
