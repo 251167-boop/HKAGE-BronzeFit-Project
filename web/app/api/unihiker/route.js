@@ -1,35 +1,50 @@
 import { NextResponse } from "next/server";
 
-const UNIHIKER_URL = process.env.UNIHIKER_URL || "http://10.1.2.3:5000/hr";
+const MQTT_BRIDGE_URL =
+  process.env.MQTT_BRIDGE_URL ||
+  process.env.NEXT_PUBLIC_MQTT_BRIDGE_URL ||
+  "http://localhost:3001";
+
+async function fetchBridgeJson(endpoint) {
+  const response = await fetch(`${MQTT_BRIDGE_URL}${endpoint}`, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(4000)
+  });
+  if (!response.ok) {
+    throw new Error(`Bridge returned ${response.status}`);
+  }
+  return response.json();
+}
 
 export async function GET(request) {
   const ping = new URL(request.url).searchParams.get("ping");
+
   try {
-    const res = await fetch(UNIHIKER_URL, { cache: "no-store" });
-    const contentType = res.headers.get("content-type") || "";
-    let hr = null;
-
-    if (contentType.includes("application/json")) {
-      const payload = await res.json();
-      hr = Number(payload.hr ?? payload.bpm ?? 0);
-    } else {
-      hr = Number((await res.text()).trim());
-    }
-
     if (ping) {
-      return NextResponse.json({ ok: res.ok, message: res.ok ? "Unihiker connected." : "Unihiker not healthy." });
+      const bridgeHealth = await fetchBridgeJson("/health");
+      return NextResponse.json({
+        ok: !!bridgeHealth?.mqttConnected,
+        message: bridgeHealth?.mqttConnected ? "Unihiker connected." : "MQTT bridge connected, waiting for broker."
+      });
     }
+
+    const data = await fetchBridgeJson("/api/heartrate");
+    const hr = Number(data?.hr ?? data?.data?.bpm ?? 0);
+
     return NextResponse.json({
-      ok: res.ok && hr > 0,
+      ok: !!data?.ok && hr > 0,
       hr: hr > 0 ? hr : 0,
-      message: res.ok ? "Heart rate fetched." : "Unihiker request failed."
+      message: data?.ok ? "Heart rate fetched." : "Waiting for heart rate data.",
+      source: "mqtt-bridge",
+      data: data?.data ?? null
     });
   } catch (error) {
     return NextResponse.json(
       {
         ok: false,
         hr: 0,
-        message: ping ? "Unihiker not reachable." : "Unable to fetch heart rate."
+        message: ping ? "MQTT bridge not reachable." : "Unable to fetch heart rate from MQTT bridge.",
+        source: "mqtt-bridge"
       },
       { status: 200 }
     );
