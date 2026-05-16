@@ -23,3 +23,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+
+# Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/.env.local
+web/data/
