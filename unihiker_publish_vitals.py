@@ -7,20 +7,24 @@ This script runs on the UNIHIKER device and publishes fake BPM data
 to the symbinest/vital/heart topic every 2 seconds.
 """
 
-import os
-import time
 import json
+import os
 import random
+import time
+
 import paho.mqtt.client as mqtt
-from datetime import datetime
 
 # Configuration from environment variables with defaults
-MQTT_HOST = os.getenv("MQTT_HOST", "10.1.2.3")
+# When this script runs on the UNIHIKER itself, the SIoT broker is local.
+MQTT_HOST = os.getenv("MQTT_HOST", "127.0.0.1")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USERNAME = os.getenv("MQTT_USERNAME", "siot")
 MQTT_PASSWORD = os.getenv("MQTT_PASSWORD", "dfrobot")
 MQTT_TOPIC_PREFIX = os.getenv("MQTT_TOPIC_PREFIX", "symbinest")
 DEVICE_ID = os.getenv("DEVICE_ID", "unihiker_01")
+CLIENT_ID = os.getenv("MQTT_CLIENT_ID", "siot_python_client")
+LEGACY_HEARTBEAT_TOPIC = os.getenv("MQTT_LEGACY_HEARTBEAT_TOPIC", "Heartbeat/Beat")
+PUBLISH_LEGACY_TOPIC = os.getenv("PUBLISH_LEGACY_TOPIC", "true").lower() == "true"
 
 # Topic definitions
 HEART_RATE_TOPIC = f"{MQTT_TOPIC_PREFIX}/vital/heart"
@@ -44,6 +48,8 @@ def on_disconnect(client, userdata, rc):
     """Callback for when client disconnects from MQTT broker."""
     if rc != 0:
         print(f"⚠️  Unexpected disconnection (code: {rc}), will retry...")
+    else:
+        print("[INFO] Disconnected from SIoT server.")
 
 
 def on_publish(client, userdata, mid):
@@ -51,13 +57,20 @@ def on_publish(client, userdata, mid):
     pass  # Silent for high-frequency publishing
 
 
+def on_connect_fail(client, userdata):
+    """Callback for connection failures."""
+    print(f"❌ Cannot connect to SIoT server at {MQTT_HOST}:{MQTT_PORT}")
+
+
 def create_mqtt_client():
     """Create and configure MQTT client."""
-    client = mqtt.Client()
+    client = mqtt.Client(client_id=CLIENT_ID, protocol=mqtt.MQTTv311)
     client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
     client.on_connect = on_connect
     client.on_disconnect = on_disconnect
     client.on_publish = on_publish
+    client.on_connect_fail = on_connect_fail
+    client.reconnect_delay_set(min_delay=1, max_delay=10)
     return client
 
 
@@ -90,13 +103,34 @@ def publish_heart_rate(client, bpm):
         "status": "active",
         "timestamp": int(time.time())
     }
-    
-    result = client.publish(HEART_RATE_TOPIC, json.dumps(payload), qos=1)
-    
-    if result.rc == 0:
-        print(f"📤 Published to {HEART_RATE_TOPIC}: {json.dumps(payload)}")
-    else:
-        print(f"❌ Failed to publish (code: {result.rc})")
+
+    payload_json = json.dumps(payload)
+    topics = [HEART_RATE_TOPIC]
+
+    # Mirror to the topic style used by the known-working SIoT example.
+    if PUBLISH_LEGACY_TOPIC and LEGACY_HEARTBEAT_TOPIC:
+        topics.append(LEGACY_HEARTBEAT_TOPIC)
+
+    for topic in topics:
+        if topic == LEGACY_HEARTBEAT_TOPIC:
+            legacy_payload = {
+                "msg": {
+                    "bpm": bpm,
+                    "status": payload["status"],
+                },
+                "from": DEVICE_ID,
+                "time": payload["timestamp"],
+            }
+            message = json.dumps(legacy_payload)
+        else:
+            message = payload_json
+
+        result = client.publish(topic, message, qos=1)
+
+        if result.rc == mqtt.MQTT_ERR_SUCCESS:
+            print(f"📤 Published to {topic}: {message}")
+        else:
+            print(f"❌ Failed to publish to {topic} (code: {result.rc})")
 
 
 def main():
@@ -106,7 +140,9 @@ def main():
     print("=" * 60)
     print(f"Device ID: {DEVICE_ID}")
     print(f"MQTT Broker: {MQTT_HOST}:{MQTT_PORT}")
-    print(f"Topic: {HEART_RATE_TOPIC}")
+    print(f"Primary topic: {HEART_RATE_TOPIC}")
+    if PUBLISH_LEGACY_TOPIC and LEGACY_HEARTBEAT_TOPIC:
+        print(f"Legacy SIoT topic: {LEGACY_HEARTBEAT_TOPIC}")
     print("-" * 60)
     
     # Create and connect MQTT client

@@ -20,9 +20,12 @@ const MQTT_USERNAME = process.env.MQTT_USERNAME || 'siot';
 const MQTT_PASSWORD = process.env.MQTT_PASSWORD || 'dfrobot';
 const MQTT_TOPIC_PREFIX = process.env.MQTT_TOPIC_PREFIX || 'symbinest';
 const BRIDGE_PORT = process.env.BRIDGE_PORT || '3001';
+const MQTT_CLIENT_ID = process.env.MQTT_CLIENT_ID || 'silverfit_mqtt_bridge';
+const LEGACY_HEARTBEAT_TOPIC = process.env.MQTT_LEGACY_HEARTBEAT_TOPIC || 'Heartbeat/Beat';
 
 // Topic definitions
 const HEART_RATE_TOPIC = `${MQTT_TOPIC_PREFIX}/vital/heart`;
+const SUBSCRIBED_TOPICS = [...new Set([HEART_RATE_TOPIC, LEGACY_HEARTBEAT_TOPIC])];
 
 // TODO: Future topics for expansion
 // const EMERGENCY_TOPIC = `${MQTT_TOPIC_PREFIX}/alert/emergency`;
@@ -32,6 +35,67 @@ const HEART_RATE_TOPIC = `${MQTT_TOPIC_PREFIX}/vital/heart`;
 // State
 let latestHeartRate = null;
 const clients = new Set();
+
+function getNumericValue(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function inferBpm(payload) {
+  if (payload == null) return null;
+
+  if (typeof payload === 'number' || typeof payload === 'string') {
+    return getNumericValue(payload);
+  }
+
+  const candidates = [
+    payload.bpm,
+    payload.BPM,
+    payload.beat,
+    payload.Beat,
+    payload.hr,
+    payload.heartRate,
+    payload.value
+  ];
+
+  for (const candidate of candidates) {
+    const bpm = getNumericValue(candidate);
+    if (bpm !== null) return bpm;
+  }
+
+  return null;
+}
+
+function normalizeHeartRateMessage(topic, payload) {
+  if (topic === HEART_RATE_TOPIC) {
+    const bpm = inferBpm(payload);
+    if (bpm === null) return null;
+    return {
+      device: payload.device || payload.from || 'unihiker_01',
+      bpm,
+      status: payload.status || 'active',
+      timestamp: Number(payload.timestamp || payload.time || Math.floor(Date.now() / 1000)),
+      sourceTopic: topic,
+      raw: payload
+    };
+  }
+
+  if (topic === LEGACY_HEARTBEAT_TOPIC) {
+    const message = payload.msg ?? payload;
+    const bpm = inferBpm(message);
+    if (bpm === null) return null;
+    return {
+      device: payload.from || payload.device || 'unihiker_01',
+      bpm,
+      status: message.status || payload.status || 'active',
+      timestamp: Number(payload.time || payload.timestamp || Math.floor(Date.now() / 1000)),
+      sourceTopic: topic,
+      raw: payload
+    };
+  }
+
+  return null;
+}
 
 // Create Express app
 const app = express();
@@ -89,22 +153,28 @@ app.get('/events', (req, res) => {
 
 // Create MQTT client
 const mqttClient = mqtt.connect(`mqtt://${MQTT_HOST}:${MQTT_PORT}`, {
+  clientId: MQTT_CLIENT_ID,
   username: MQTT_USERNAME,
   password: MQTT_PASSWORD,
+  protocolVersion: 4,
+  keepalive: 60,
   reconnectPeriod: 5000,
-  connectTimeout: 30000
+  connectTimeout: 30000,
+  resubscribe: true
 });
 
 // MQTT connection handlers
 mqttClient.on('connect', () => {
   console.log(`✅ Connected to MQTT broker at ${MQTT_HOST}:${MQTT_PORT}`);
   
-  // Subscribe to heart rate topic
-  mqttClient.subscribe(HEART_RATE_TOPIC, (err) => {
+  // Subscribe to heart rate topics
+  mqttClient.subscribe(SUBSCRIBED_TOPICS, (err) => {
     if (err) {
-      console.error(`❌ Failed to subscribe to ${HEART_RATE_TOPIC}:`, err);
+      console.error(`❌ Failed to subscribe to ${SUBSCRIBED_TOPICS.join(', ')}:`, err);
     } else {
-      console.log(`📡 Subscribed to topic: ${HEART_RATE_TOPIC}`);
+      SUBSCRIBED_TOPICS.forEach((topic) => {
+        console.log(`📡 Subscribed to topic: ${topic}`);
+      });
     }
   });
 });
@@ -112,19 +182,22 @@ mqttClient.on('connect', () => {
 mqttClient.on('message', (topic, message) => {
   try {
     const payload = JSON.parse(message.toString());
-    
-    if (topic === HEART_RATE_TOPIC) {
-      latestHeartRate = payload;
-      console.log(`📊 Heart Rate: ${payload.bpm} BPM (device: ${payload.device})`);
-      
+
+    const normalized = normalizeHeartRateMessage(topic, payload);
+    if (normalized) {
+      latestHeartRate = normalized;
+      console.log(`📊 Heart Rate: ${normalized.bpm} BPM (device: ${normalized.device}, topic: ${topic})`);
+
       // Broadcast to all connected SSE clients
-      const data = JSON.stringify({ type: 'heartrate', payload });
+      const data = JSON.stringify({ type: 'heartrate', payload: normalized });
       clients.forEach(client => {
         client.write(`data: ${data}\n\n`);
       });
+    } else {
+      console.warn(`⚠️  Ignored MQTT payload without BPM on topic ${topic}`);
     }
   } catch (err) {
-    console.error('❌ Error processing MQTT message:', err);
+    console.error(`❌ Error processing MQTT message from ${topic}:`, err);
   }
 });
 
@@ -147,7 +220,7 @@ app.listen(BRIDGE_PORT, () => {
   console.log('='.repeat(60));
   console.log(`Bridge URL: http://localhost:${BRIDGE_PORT}`);
   console.log(`MQTT Broker: mqtt://${MQTT_HOST}:${MQTT_PORT}`);
-  console.log(`Topic: ${HEART_RATE_TOPIC}`);
+  console.log(`Topics: ${SUBSCRIBED_TOPICS.join(', ')}`);
   console.log('='.repeat(60));
   console.log('Endpoints:');
   console.log(`  - GET http://localhost:${BRIDGE_PORT}/health`);
