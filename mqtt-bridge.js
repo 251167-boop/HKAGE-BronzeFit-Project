@@ -14,18 +14,22 @@ const mqtt = require('mqtt');
 const cors = require('cors');
 
 // Configuration from environment variables with defaults
-const MQTT_HOST = process.env.MQTT_HOST || '10.1.2.3';
+const MQTT_HOST = process.env.MQTT_HOST || '192.168.123.1';
 const MQTT_PORT = process.env.MQTT_PORT || '1883';
 const MQTT_USERNAME = process.env.MQTT_USERNAME || 'siot';
 const MQTT_PASSWORD = process.env.MQTT_PASSWORD || 'dfrobot';
 const MQTT_TOPIC_PREFIX = process.env.MQTT_TOPIC_PREFIX || 'symbinest';
 const BRIDGE_PORT = process.env.BRIDGE_PORT || '3001';
 const MQTT_CLIENT_ID = process.env.MQTT_CLIENT_ID || 'silverfit_mqtt_bridge';
-const LEGACY_HEARTBEAT_TOPIC = process.env.MQTT_LEGACY_HEARTBEAT_TOPIC || 'Heartbeat/Beat';
+const LEGACY_HEARTBEAT_TOPIC = process.env.MQTT_LEGACY_HEARTBEAT_TOPIC || 'HeartBeat/Beat';
+const LEGACY_HEARTBEAT_TOPIC_FALLBACK =
+  process.env.MQTT_LEGACY_HEARTBEAT_TOPIC_FALLBACK || 'Heartbeat/Beat';
 
 // Topic definitions
 const HEART_RATE_TOPIC = `${MQTT_TOPIC_PREFIX}/vital/heart`;
-const SUBSCRIBED_TOPICS = [...new Set([HEART_RATE_TOPIC, LEGACY_HEARTBEAT_TOPIC])];
+const SUBSCRIBED_TOPICS = [
+  ...new Set([HEART_RATE_TOPIC, LEGACY_HEARTBEAT_TOPIC, LEGACY_HEARTBEAT_TOPIC_FALLBACK])
+];
 
 // TODO: Future topics for expansion
 // const EMERGENCY_TOPIC = `${MQTT_TOPIC_PREFIX}/alert/emergency`;
@@ -80,7 +84,7 @@ function normalizeHeartRateMessage(topic, payload) {
     };
   }
 
-  if (topic === LEGACY_HEARTBEAT_TOPIC) {
+  if (topic === LEGACY_HEARTBEAT_TOPIC || topic === LEGACY_HEARTBEAT_TOPIC_FALLBACK) {
     const message = payload.msg ?? payload;
     const bpm = inferBpm(message);
     if (bpm === null) return null;
@@ -181,7 +185,14 @@ mqttClient.on('connect', () => {
 
 mqttClient.on('message', (topic, message) => {
   try {
-    const payload = JSON.parse(message.toString());
+    const rawMessage = message.toString();
+    let payload;
+
+    try {
+      payload = JSON.parse(rawMessage);
+    } catch (parseError) {
+      payload = rawMessage;
+    }
 
     const normalized = normalizeHeartRateMessage(topic, payload);
     if (normalized) {

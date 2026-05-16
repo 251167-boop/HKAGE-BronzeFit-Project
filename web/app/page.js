@@ -47,6 +47,9 @@ export default function HomePage() {
               <span>Start Session</span>
               <span className="btn-icon">→</span>
             </button>
+            <Link href="/chat" className="btn btn-outline">
+              <span>AI Chat</span>
+            </Link>
             <Link href="/family" className="btn btn-outline">
               <span>Family Dashboard</span>
             </Link>
