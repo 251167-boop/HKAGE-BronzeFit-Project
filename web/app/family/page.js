@@ -61,6 +61,27 @@ function buildChartPoints(sessions) {
     .join(" ");
 }
 
+function formatReport(text) {
+  if (!text) return "No report available.";
+
+  return text
+    .split("\n")
+    .map((paragraph, index) => {
+      if (!paragraph.trim()) return null;
+
+      const parts = paragraph.split(/(\*\*.*?\*\*)/g);
+      const formattedParts = parts.map((part, partIndex) => {
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return <strong key={partIndex}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+
+      return <p key={index}>{formattedParts}</p>;
+    })
+    .filter(Boolean);
+}
+
 export default function FamilyPage() {
   const [loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState([]);
@@ -229,7 +250,7 @@ export default function FamilyPage() {
                   </div>
                   <div className="family-analysis-content">
                     <div className="family-analysis-text">
-                      {latest.report || "No report available."}
+                      {formatReport(latest.report)}
                     </div>
                     <div className="family-analysis-avatar">🤖</div>
                   </div>

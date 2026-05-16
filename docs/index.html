@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BronzeFit AI</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0f172a;
+        --panel: rgba(15, 23, 42, 0.92);
+        --card: rgba(30, 41, 59, 0.9);
+        --text: #f8fafc;
+        --muted: #cbd5e1;
+        --accent: #84cc16;
+        --accent-dark: #65a30d;
+        --border: rgba(148, 163, 184, 0.22);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, Arial, sans-serif;
+        background:
+          radial-gradient(circle at top right, rgba(132, 204, 22, 0.18), transparent 30%),
+          linear-gradient(180deg, #0f172a 0%, #111827 100%);
+        color: var(--text);
+      }
+
+      main {
+        max-width: 920px;
+        margin: 0 auto;
+        padding: 56px 20px 72px;
+      }
+
+      .hero {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(132, 204, 22, 0.18);
+        color: #d9f99d;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 16px 0 12px;
+        font-size: clamp(36px, 7vw, 60px);
+        line-height: 1.05;
+      }
+
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.7;
+        font-size: 16px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px 18px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 700;
+        border: 1px solid transparent;
+      }
+
+      .button-primary {
+        background: var(--accent);
+        color: #142013;
+      }
+
+      .button-primary:hover {
+        background: var(--accent-dark);
+      }
+
+      .button-secondary {
+        border-color: var(--border);
+        color: var(--text);
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 20px;
+      }
+
+      .card h2 {
+        margin: 0 0 10px;
+        font-size: 18px;
+      }
+
+      .card ul {
+        margin: 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.7;
+      }
+
+      .card li + li {
+        margin-top: 6px;
+      }
+
+      .footer {
+        margin-top: 18px;
+        font-size: 14px;
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <span class="badge">BronzeFit AI</span>
+        <h1>Elderly Wellness Companion</h1>
+        <p>
+          This GitHub Pages site is the public entry page for BronzeFit. The full app is a
+          live Next.js + MQTT project, so GitHub Pages cannot run the complete experience by
+          itself.
+        </p>
+
+        <div class="actions">
+          <a
+            class="button button-primary"
+            href="https://github.com/251167-boop/HKAGE-BronzeFit-Project"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open GitHub Repository
+          </a>
+          <a
+            class="button button-secondary"
+            href="https://github.com/251167-boop/HKAGE-BronzeFit-Project/tree/main/web"
+            target="_blank"
+            rel="noreferrer"
+          >
+            View Web App Source
+          </a>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Why Not Full GitHub Pages?</h2>
+          <ul>
+            <li>The app uses Next.js App Router and server API routes.</li>
+            <li>The exercise flow depends on a live MQTT bridge process.</li>
+            <li>The SIoT / UNIHIKER broker is a local-network dependency.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Recommended Deployment</h2>
+          <ul>
+            <li>Easiest: run the web app and MQTT bridge on one local always-on machine.</li>
+            <li>Public option: deploy the web app to Render or Railway.</li>
+            <li>Keep the MQTT bridge on the same network as the UNIHIKER if SIoT stays local.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <h2>Current BronzeFit Features</h2>
+          <ul>
+            <li>Exercise selection and session flow</li>
+            <li>Pose tracking and form scoring</li>
+            <li>UNIHIKER + SIoT MQTT proof-of-concept</li>
+            <li>Family dashboard and session summaries</li>
+          </ul>
+        </article>
+      </section>
+
+      <p class="footer">
+        To publish this page on GitHub Pages, set the repository Pages source to the
+        <strong>`docs/`</strong> folder on the <strong>`main`</strong> branch.
+      </p>
+    </main>
+  </body>
+</html>

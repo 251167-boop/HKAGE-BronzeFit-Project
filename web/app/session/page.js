@@ -777,6 +777,12 @@ function SessionPageContent() {
           <p className="overlay-feedback">{feedback}</p>
 
           <div className="overlay-actions">
+            <button
+              className="btn-demo-back"
+              onClick={() => router.push(`/exercise/${exercise.id}/demo`)}
+            >
+              Back to Demo Video
+            </button>
             <button className="btn-end" onClick={endSession}>
               End Session
             </button>
